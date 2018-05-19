@@ -21,8 +21,7 @@ for cam in cameras do (
 		setUserProp cam "SceneState" ((if (getUserProp cam "SceneState") != undefined then (getUserProp cam "SceneState") else if (SceneStates.count > 1) then  "0") as string)
 		setUserProp cam "RenderWidth" ((if (getUserProp cam "RenderWidth" != undefined) then (getUserProp cam "RenderWidth") else "1920") as integer)
 		setUserProp cam "RenderHeight" ((if (getUserProp cam "RenderHeight" != undefined) then (getUserProp cam "RenderHeight") else "1080") as integer)
-		--setUserProp cam "GlobalCheck" ((if (getUserProp cam "GlobalCheck" != undefined) then (getUserProp cam "GlobalCheck") else "true") as string)
-	)
+)
 global ReadyToRender = for cams in CamCollection where getUserProp cams "RenderCheck" collect cams
 global Info = (ReadyToRender.count as string)+" in "+(CamCollection.count as string) + " camera ready"
 
@@ -35,19 +34,13 @@ if CamCollection != undefined then qSort CamCollection compareNames
 global DefaultRenderPath = if(getAppData TrackViewNodes 001 == undefined) then "" else getAppData TrackViewNodes 001
 setAppData TrackViewNodes 001 (DefaultRenderPath as string)
 
---global DefaultGlobalExposure = if(getAppData TrackViewNodes 002 == undefined) then 10.0 else getAppData TrackViewNodes 002
---setAppData TrackViewNodes 002 (DefaultGlobalExposure as string)
-
---global DefaultGlobalWhiteB = if(getAppData TrackViewNodes 003 == undefined) then "(color 255 255 255)" else getAppData TrackViewNodes 003
---setAppData TrackViewNodes 003 (DefaultGlobalWhiteB as string)
-
 global DefaultResMul = if(getAppData TrackViewNodes 004 == undefined) then 1.0 else getAppData TrackViewNodes 004
 setAppData TrackViewNodes 004 (DefaultResMul as string)
 
 global DefaultFileFormat = if(getAppData TrackViewNodes 005 == undefined) then ".jpg" else getAppData TrackViewNodes 005
 setAppData TrackViewNodes 005 (DefaultFileFormat  as string)
 
-global DefaultCxr = if(getAppData TrackViewNodes 006 == undefined) then true else getAppData TrackViewNodes 006
+global DefaultCxr = if(getAppData TrackViewNodes 006 == undefined) then false else getAppData TrackViewNodes 006
 setAppData TrackViewNodes 006 (DefaultCxr as string)
 
 -- Session Variables
@@ -82,7 +75,6 @@ function BtnCheck index current = (
 function ChangeName index newvalue = (
 	CamCollection[index].name=newvalue
 	textindex = ((index-1)*15+3)
-	CamSub.controls[textindex].tooltip = newvalue
 	)
 	-- change user props
 function UserProps index propname newvalue = (
@@ -102,10 +94,12 @@ function CameraProps index propname newvalue = (
 	
 	-- set current view
 fn SetCurrentView index = (
+	
 	index = index as integer
 	viewport.setCamera CamCollection[index]
 	
 	if SceneStates.count > 1 then (
+		if (getUserProp (CamCollection[index]) "SceneState") == "undefined" then return messagebox "first select a scene state"
 		sceneName = ssm.GetSceneState ((getUserProp (CamCollection[index]) "SceneState") as integer)
 		if sceneName != undefined then ssm.RestoreAllParts (sceneName)
 	)
@@ -133,34 +127,17 @@ fn RenderScene = (
 			cam = CamCollection[index]
 			SetCurrentView index
 			
-			-- variables for local props to change later if global activated
-			--oldExposure = cam.exposure_value
-			--oldWhiteType = cam.white_balance_type
-			--oldWhiteColor = cam.white_balance_custom	
-			
 			-- get render props
 			renderPath = (GetAppData trackViewNodes 001) as string
 			renderWidth= (getUserProp cam "RenderWidth") as integer * (GetAppData trackViewNodes 004 as float)
 			renderHeight= (getUserProp cam "RenderHeight") as integer * (GetAppData trackViewNodes 004 as float)
-			
-			-- check global active
-			--if ((getUserProp cam "GlobalCheck")==true) then (
-			--	cam.white_balance_type = 2
-			--	setProperty (cam) "exposure_value" ((getAppData trackViewNodes 002) as float)
-			--	setProperty (cam) "white_balance_custom" (execute(getAppData trackViewNodes 003))
-			--)
 			
 			-- render
 			if((getUserProp cam "RenderCheck") == true) then (
 				max quick render
 				CoronaRenderer.CoronaFp.saveAllElements ((renderPath+"\\"+(cam.name as string)+(GetAppData trackViewNodes 005 as string)) as string)
 				if (DefaultCxr as booleanClass) then CoronaRenderer.CoronaFp.dumpVfb ((renderPath+"\\"+(cam.name as string)+".cxr") as string)
-				--deleteFile ((renderPath+"\\"+(cam.name as string)+".Alpha"+saveFormat) as string)
 			)
-			-- set back old values
-			--cam.exposure_value = oldExposure
-			--cam.white_balance_type = oldWhiteType
-			--cam.white_balance_custom = oldWHiteColor
 			)
 	)	
 	
@@ -194,27 +171,36 @@ fn  SendBatch = (
 		batchRenderMgr.netRender = NetRenderActive
 		batchRenderMgr.Render()
 	)	
-
+	
 -- Global Edit Rollout
 rollout cameraListener "Global Preferences" (
-	button renderS "Render" align:#left pos:[620,10,0] width:70
-	button renderB "Batch" align:#left pos:[690,10,0] width:70
-	checkbutton check_net "Net?" align:#left pos:[760, 10,0] toolTip:"Make Double Width and Height"
-	editText renderP "Render Path" align:#left pos:[10,10,0] width:500 text:(DefaultRenderPath as string)
-	editText renderF align:#left pos:[510,10,0] width:100 text:(DefaultFileFormat as string)
-	--dropdownlist bFormats "" align:#left items:#(".jpg",".exr", ".tiff") pos:[520,10,0] width:100
-	--spinner GlobalExposure width:50 range:[-4,15,(DefaultGlobalExposure as float)] type:#integer pos:[10,50,0] toolTip:"Global Exposure Control"
-	--colorpicker GlobalWhiteB color:(execute DefaultGlobalWhiteB) pos:[70,50,0] toolTip:"Global White Balance Custom Color"
+	editText renderP "Render Path" align:#left pos:[10,10,0] width:500 height:20 text:(DefaultRenderPath as string)
+	editText renderF align:#left pos:[510,10,0] width:100  height:20 text:(DefaultFileFormat as string)
+	checkbutton Cxr "CXR" align:#left pos:[620,10,0] toolTip:"Save also cxr (for corona only)" checked:(DefaultCxr as booleanClass)
+	button renderS "Render" align:#left pos:[700,10,0] width:70
+	button renderB "Batch" align:#left pos:[770,10,0] width:70
+	checkbutton check_net "Net?" align:#left pos:[840, 10,0] toolTip:"Make Double Width and Height"
+	
 	spinner ResMul "ResolutionX " alig:#left pos:[60,60,0] width:60 range:[-4,15,(DefaultResMul as float)] toolTip:"Resolution Multiplication By N Number"
 	button objlayer "LFO" align:#left pos:[160,60,0] toolTip:"Create Layers from selected Objects"
 	button statelayer "SSL" align:#left pos:[200,60,0] toolTip:"Create Scene States from layers"
 	button camlayer "CL" align:#left pos:[240,60,0] toolTip:"Create Free Camera from Layers"
-	button massassign "MA" align:#left pos:[280,60,0] toolTip:"Mass Assign"
-	checkbutton Cxr "CXR" align:#left pos:[350,60,0] toolTip:"Save also cxr (for corona only)" checked:(DefaultCxr as booleanClass)
+	button addCoronaMod "ACC" align:#left pos:[280,60,0] toolTip:"Add Corona Camera Modifier"
+	
 	button prevCam "Prev" align:#left pos:[0,90,0] toolTip:"Prev Camera" width:80 height:30
 	button nextCam "Next" align:#left pos:[80,90,0] toolTip:"Next Camera" width:80 height:30
 	label camlabel Info align:#center pos:[520, 50,0] style_sunkenedge:true width:270 height:50
-
+	
+	on addCoronaMod pressed do (
+		coronamod = CoronaCameraMod()
+		for i in CamCollection do (
+			
+			for currentmod in i.modifiers do (
+				deletemodifier i currentmod
+				)
+			addmodifier i coronamod
+		)
+	)
 	
 	on renderS pressed do (
 		RenderScene()
@@ -244,31 +230,6 @@ rollout cameraListener "Global Preferences" (
 		if (item+1) > count then index=1 else index=(item+1)
 		
 		SetCurrentView index
-	)
-	
-	on massassign pressed do (
-		rollout mass_dialog "Mass Assign"
-		(
-			spinner RenderW "Render Width" range:[320,8000,320] type:#integer
-			spinner RenderH "Render Height" range:[320,8000,320] type:#integer
-			spinner Focal "Focal Length" range:[16,120,80] type:#integer
-			checkbutton RenderCam "Render Cam" checked:true
-			button okey "Save"
-			
-			on okey pressed do
-			(
-				removeRollout camSub CameraListenerRollout
-				for cam in CamCollection do
-				(
-					setUserProp cam "RenderWidth" RenderW.value as string
-					setUserProp cam "RenderHeight" RenderH.value as string
-					setUserProp cam "RenderCheck" RenderCam.state as string
-					cam.focal_length_mm = Focal.value
-				)
-			)
-		)
-		
-		createDialog mass_dialog style:#(#style_titlebar, #style_border, #style_sysmenu, #style_minimizebox)
 	)
 	
 	on objlayer pressed do (
@@ -350,6 +311,7 @@ rollout cameraListener "Global Preferences" (
 		rollout cam_dialog "Camera Position"
 		(
 			pickbutton tempcam "Pick Camera" autodisplay:true 
+			editText camline "Camera End"
 			
 			on tempcam picked obj do (
 				
@@ -359,12 +321,10 @@ rollout cameraListener "Global Preferences" (
 					layerName = ilayer.name
 					if ilayer.name != "0" do
 					(
-						
-						cam = copy obj
-						--cam.transform = obj.transform
+						maxops.cloneNodes #(obj) newNodes:&cam
 						state = sceneStateMgr.FindSceneState layerName
 						setUserProp cam "SceneState" state as string
-						cam.name = layerName+"-01"
+						cam.name = layerName+"-"+(camline.text)
 					)
 				)
 				destroyDialog cam_dialog
@@ -405,6 +365,7 @@ rollout cameraListener "Global Preferences" (
 CamSub ="rollout CamSub \"Camera Lister\" "
 CamSub+="(\n"
 
+
 i = 1
 
 for cam in CamCollection do
@@ -421,6 +382,7 @@ for cam in CamCollection do
 		renderh="renderh_"+cname
 		SSdropdown="SSdropdown_"+cname
 		focal="focal_"+cname
+		focus="focus_"+cname
 		exposure="exposure_"+cname
 		tilt = "tilt_"+cname
 		clip = "clip_"+cname
@@ -432,12 +394,11 @@ for cam in CamCollection do
 		--defaults
 		dname = cam.name as string
 		dcheckbox = if selection.count > 0 and ((selection[1].name as string) == dname) and ((selection[2]) == undefined) then true else false
-		
-		--dcheckbox = true
 		drender = (getUserProp cam "RenderCheck") as string
 		dss =(if (getUserProp cam "SceneState") !="undefined" then (getUserProp cam "SceneState") else "0") as string
 		drenderw = (getUserProp cam "RenderWidth") as string
 		drenderh = (getUserProp cam "RenderHeight") as string
+		dfocus=cam.use_dof as string
 		dfocal = cam.focal_length_mm as string
 		dexposure = cam.exposure_value as string
 		dtilt = cam.auto_vertical_tilt_correction as string
@@ -445,25 +406,22 @@ for cam in CamCollection do
 		dclipF = cam.clip_far as string
 		dwhiteB = cam.white_balance_custom as string
 		dGlobalCheck = (getUserProp cam "GlobalCheck") as string
-		print dcheckbox
 		
 		-- UI ELEMENTS
 		
 		CamSub+= "checkbutton "+checkbtn+" \"\" align:#left pos:[10,"+(i * 25) as string+"] width:10 height:20 toolTip:\"Select Camera\" checked:"+(dcheckbox as string)+"\n"
 		CamSub+="button "+setview+" \"\" align:#left pos:[20,"+(i * 25) as string+"] width:10 height:20 toolTip:\"Set View\"\n"
-		CamSub+="editText "+nametext+"  \"\" pos:[30,"+(i*25) as string+"] width:100 height:20 text:\""+dname+"\" toolTip:\""+dname+"\" \n"
-		CamSub+="spinner "+RenderW+" \"\" width:50 range:[320,8000,"+drenderw+"] type:#integer pos:[140,"+(i * 25) as string+"] toolTip:\"Render Width\" \n"
-		CamSub+="spinner "+RenderH+" \"\" width:50 range:[320,8000,"+drenderh+"] type:#integer pos:[190,"+(i * 25) as string+"] toolTip:\"Render Height\"\n"
-		CamSub+="dropdownlist "+SSdropdown+" \"\" items:SceneStates pos:[250,"+(i*25) as string+"] selection:"+dss+" width:150 across:2 toolTip:\"Scene States\" \n"
-		CamSub+="spinner "+focal+" \"\" width:50 range:[18,120,"+dfocal+"] pos:[405,"+(i * 25) as string+"] toolTip:\"Focal Length\"\n"
-		CamSub+="spinner "+exposure+" \"\" width:50 range:[-5,15,"+dexposure+"] pos:[460,"+(i * 25) as string+"] type:#integer toolTip:\"Exposure Control\"\n"
-		CamSub+="checkbox "+tilt+" \"\" across:2 pos:[515,"+(i * 25) as string+"] checked:"+dtilt+" toolTip:\"Vertical Tilt\" \n"
-		CamSub+="checkbox "+clip+" \"\" across:2 pos:[540,"+(i * 25) as string+"] checked:"+(cam.clip_on as string)+" toolTip:\"Clip On\" \n"
-		CamSub+="spinner "+clipN+" \"\" width:70 range:[0,1000000,"+dclipN+"] pos:[565,"+(i * 25) as string+"] type:#worldunits toolTip:\"Clip Near\"\n"
-		CamSub+="spinner "+clipF+" \"\" width:70 range:[0,1000000,"+dclipF+"] pos:[640,"+(i * 25) as string+"] type:#worldunits toolTip:\"Clip Far\"\n"
-		CamSub+="colorpicker "+whiteB+" \"\" color:"+dwhiteB+" pos:[710,"+(i * 25) as string+"] toolTip:\"White Balance Custom Color\"\n"
-		--CamSub+="checkbox "+globalCheck+" \"\" across:2 pos:[760,"+(i * 25) as string+"] checked:"+dGlobalCheck+" toolTip:\"Global Assign\" \n"
-		CamSub+="checkbox "+checkRender+" \"\" across:2 pos:[790,"+(i * 25) as string+"] checked:"+dRender+" toolTip:\"Render This Cam\" \n"
+		CamSub+="editText "+nametext+"  \"\" pos:[30,"+(i*25) as string+"] width:220 height:20 text:\""+dname+"\" toolTip:\""+dname+"\" \n"
+		CamSub+="spinner "+RenderW+" \"\" width:50  pos:[270,"+(i * 25) as string+"] range:[320,8000,"+drenderw+"] type:#integer toolTip:\"Render Width\" \n"
+		CamSub+="spinner "+RenderH+" \"\" width:50 pos:[330,"+(i * 25) as string+"] range:[320,8000,"+drenderh+"] type:#integer toolTip:\"Render Height\"\n"
+		CamSub+="dropdownlist "+SSdropdown+" \"\" items:SceneStates pos:[390,"+(i*25) as string+"] selection:"+dss+" width:180 across:2 toolTip:\"Scene States\" \n"
+		CamSub+="checkbox "+focus+" \"\" across:2 pos:[580,"+(i * 25) as string+"] checked:"+dfocus+" toolTip:\"Depth Of Field\" \n"
+		CamSub+="checkbox "+tilt+" \"\" across:2 pos:[605,"+(i * 25) as string+"] checked:"+dtilt+" toolTip:\"Vertical Tilt\" \n"
+		CamSub+="spinner "+focal+" \"\" width:50 range:[18,120,"+dfocal+"] pos:[630,"+(i * 25) as string+"] toolTip:\"Focal Length\"\n"
+		CamSub+="checkbox "+clip+" \"\" across:2 pos:[690,"+(i * 25) as string+"] checked:"+(cam.clip_on as string)+" toolTip:\"Clip On\" \n"
+		CamSub+="spinner "+clipN+" \"\" width:70 range:[0,1000000,"+dclipN+"] pos:[715,"+(i * 25) as string+"] type:#worldunits toolTip:\"Clip Near\"\n"
+		CamSub+="spinner "+clipF+" \"\" width:70 range:[0,1000000,"+dclipF+"] pos:[790,"+(i * 25) as string+"] type:#worldunits toolTip:\"Clip Far\"\n"
+		CamSub+="checkbox "+checkRender+" \"\" across:2 pos:[870,"+(i * 25) as string+"] checked:"+dRender+" toolTip:\"Render This Cam\" \n"
 		
 		-- HANDLERS
 		-- clip on handler begin
@@ -520,6 +478,12 @@ for cam in CamCollection do
 		CamSub+="CameraProps \""+(i as string)+"\" \"exposure_value\" state \n"
 		CamSub+=")\n"
 		-- exposure handler end
+
+		-- exposure handler begin
+		CamSub+="\non "+focus+" changed state do (\n"
+		CamSub+="CameraProps \""+(i as string)+"\" \"use_dof\" state \n"
+		CamSub+=")\n"
+		-- exposure handler end
 		
 		-- exposure handler begin
 		CamSub+="\non "+tilt+" changed state do (\n"
@@ -561,11 +525,9 @@ for cam in CamCollection do
 		i+=1
 		)
 		
-CamSub+="\n)"
-		
+	CamSub+="\n)"
 try (closeRollOutFloater CameraListenerRollout) catch()
-CameraListenerRollout = newRolloutFloater "Camera Lister" 820 600
-		
+CameraListenerRollout = newRolloutFloater "Camera Lister" 900 600
 addRollOut cameraListener CameraListenerRollout
 addRollOut (execute CamSub) CameraListenerRollout
 )
