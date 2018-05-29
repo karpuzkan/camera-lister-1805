@@ -80,7 +80,7 @@ global Info = 	ReadyInfo()
 	-- select btn
 function BtnCheck index current = (
 	select CamCollection[index as integer]
-	for i in CamerasRO.controls where ((ClassOf i) as string) == "CheckButtonControl" and (i as string) != "CheckButtonControl:"+current do i.checked=false	
+	--for i in CamerasRO.controls where ((ClassOf i) as string) == "CheckButtonControl" and (i as string) != "CheckButtonControl:"+current do i.checked=false	
 	)
 	-- change cam name
 function ChangeName index newvalue = (
@@ -105,6 +105,7 @@ fn SetCurrentView index = (
 	
 	index = index as integer
 	viewport.setCamera CamCollection[index]
+	print index
 	
 	if SceneStates.count > 1 then (
 		if (getUserProp (CamCollection[index]) "SceneState") == "undefined" then return messagebox "first select a scene state"
@@ -132,16 +133,16 @@ fn RenderScene = (
 	
 	start_total=timestamp()
 	
-		for rendering in 1 to willrender.count do (
+		for rendering in willrender do (
 			 if (keyboard.escPressed) do (
 				 exit messagebox "render canceled!"
 			 )
 			-- close scene dialog
 			renderSceneDialog.close()
-			index = rendering as integer
-			
+			--index = rendering as integer
+			 cam = rendering
+			 index = findItem CamCollection rendering
 			-- render
-			cam = CamCollection[index]
 			SetCurrentView index
 			
 			-- get render props
@@ -150,8 +151,8 @@ fn RenderScene = (
 			renderHeight= (getUserProp cam "RenderHeight") as integer * (GetAppData trackViewNodes 004 as float)
 			 
 			max quick render
-			--CoronaRenderer.CoronaFp.saveAllElements ((renderPath+"\\"+(cam.name as string)+(GetAppData trackViewNodes 005 as string)) as string)
-			--if (DefaultCxr as booleanClass) then CoronaRenderer.CoronaFp.dumpVfb ((renderPath+"\\"+(cam.name as string)+".cxr") as string)
+			CoronaRenderer.CoronaFp.saveAllElements ((renderPath+"\\"+(cam.name as string)+(GetAppData trackViewNodes 005 as string)) as string)
+			if (DefaultCxr as booleanClass) then CoronaRenderer.CoronaFp.dumpVfb ((renderPath+"\\"+(cam.name as string)+".cxr") as string)
 			 
 			renderedcam+=1
 			leftcam=(totalcam-renderedcam)
@@ -533,10 +534,12 @@ for cam in CamCollection do
 
 		CamSub+="\non "+renderw+" changed state do (\n"
 		CamSub+="UserProps \""+(i as string)+"\" \"RenderWidth\" state \n"
+		CamSub+="SetCurrentView \""+cname+"\" \n"
 		CamSub+=")\n"
 
 		CamSub+="\non "+renderh+" changed state do (\n"
 		CamSub+="UserProps \""+(i as string)+"\" \"RenderHeight\" state \n"
+		CamSub+="SetCurrentView \""+cname+"\" \n"
 		CamSub+=")\n"
 
 		CamSub+="\non "+SSdropdown+" selected state do (\n"
