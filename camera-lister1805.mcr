@@ -214,7 +214,7 @@ rollout GlobalPreferencesRO "Global Preferences" (
 	button renderB "Batch" align:#left pos:[770,10,0] width:70
 	checkbutton check_net "Net?" align:#left pos:[840, 10,0] toolTip:"Make Double Width and Height"
 	
-	spinner ResMul "ResolutionX " alig:#left pos:[60,60,0] width:60 range:[-4,15,(DefaultResMul as float)] toolTip:"Resolution Multiplication By N Number"
+	spinner ResMul "ResolutionX " alig:#left pos:[60,60,0] width:60 range:[1,10,(DefaultResMul as float)] toolTip:"Resolution Multiplication By N Number"
 	button objlayer "LFO" align:#left pos:[160,60,0] toolTip:"Create Layers from selected Objects"
 	button statelayer "SSL" align:#left pos:[200,60,0] toolTip:"Create Scene States from layers"
 	button camlayer "CL" align:#left pos:[240,60,0] toolTip:"Create Free Camera from Layers"
@@ -223,7 +223,7 @@ rollout GlobalPreferencesRO "Global Preferences" (
 	button prevCam "Prev" align:#left pos:[0,90,0] toolTip:"Prev Camera" width:80 height:30
 	button nextCam "Next" align:#left pos:[80,90,0] toolTip:"Next Camera" width:80 height:30
 	button slightShow "Auto" align:#left pos:[160,90,0] tooltip:"Slight Show Cameras" width:80 height:30
-	spinner slightTick "" align:#left pos:[250,95,0] tooltip:"Set Interval for Slight Show in seconds" width:40 height:30 type:#integer
+	spinner slightTick "" align:#left pos:[250,95,0] tooltip:"Set Interval for Slight Show in seconds" width:40 height:30 type:#integer range:[1,120,1]
 	label slightTickLabel "second" align:#left pos:[300,95,0]
 	label ReadyRender Info pos:[520, 50,0] width:270 height:20
 	label RenderingInfo "rendering..." pos:[520, 70,0] width:270 height:20 visible:false
