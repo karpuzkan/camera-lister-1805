@@ -56,7 +56,7 @@ for i in 1 to ssm.getCount() do
 -- Rollouts
 global GlobalPreferencesRO
 global GlobalChangeRO
-global CamSub
+global CamerasRO
 
 -- Functions
 -- global declarations
@@ -80,7 +80,8 @@ global Info = 	ReadyInfo()
 	-- select btn
 function BtnCheck index current = (
 	select CamCollection[index as integer]
-	--for i in CamerasRO.controls where ((ClassOf i) as string) == "CheckButtonControl" and (i as string) != "CheckButtonControl:"+current do i.checked=false	
+	unselectbuttons = for i in CamerasRO.controls where ((ClassOf i) as string) == "CheckButtonControl" and (i as string) != "CheckButtonControl:"+current collect i
+	if unselectbuttons !=undefined then for i in unselectbuttons do i.checked=false
 	)
 	-- change cam name
 function ChangeName index newvalue = (
@@ -90,14 +91,17 @@ function ChangeName index newvalue = (
 	-- change user props
 function UserProps index propname newvalue = (
 	SetUserProp CamCollection[index as integer] propname newvalue
+	SetCurrentView index
 	)
 
 	-- change camera props
-function CameraProps index propname newvalue = (
+function CameraProps index propname newvalue setview:true = (
 	index = index as integer
-	setProperty (CamCollection[index]) (propname as string) newvalue
-	
-	if propname == "auto_vertical_tilt_correction" and newvalue == false then CamCollection[index].vertical_tilt_correction=0; CamCollection[index].horizontal_tilt_correction=0
+	cam = CamCollection[index]
+	setProperty cam (propname as string) newvalue
+	if propname == "focal_length_mm" then cam.specify_fov=off
+	if propname == "auto_vertical_tilt_correction" and newvalue == false then cam.vertical_tilt_correction=0; cam.horizontal_tilt_correction=0
+	if setview==true then SetCurrentView index
 	)	
 	
 	-- set current view
@@ -105,7 +109,7 @@ fn SetCurrentView index = (
 	
 	index = index as integer
 	viewport.setCamera CamCollection[index]
-	print index
+	--print index
 	
 	if SceneStates.count > 1 then (
 		if (getUserProp (CamCollection[index]) "SceneState") == "undefined" then return messagebox "first select a scene state"
@@ -135,7 +139,8 @@ fn RenderScene = (
 	
 		for rendering in willrender do (
 			 if (keyboard.escPressed) do (
-				 exit messagebox "render canceled!"
+				 messagebox "canceled!"
+				 exit
 			 )
 			-- close scene dialog
 			renderSceneDialog.close()
@@ -217,9 +222,24 @@ rollout GlobalPreferencesRO "Global Preferences" (
 	
 	button prevCam "Prev" align:#left pos:[0,90,0] toolTip:"Prev Camera" width:80 height:30
 	button nextCam "Next" align:#left pos:[80,90,0] toolTip:"Next Camera" width:80 height:30
+	button slightShow "Auto" align:#left pos:[160,90,0] tooltip:"Slight Show Cameras" width:80 height:30
+	spinner slightTick "" align:#left pos:[250,95,0] tooltip:"Set Interval for Slight Show in seconds" width:40 height:30 type:#integer
+	label slightTickLabel "second" align:#left pos:[300,95,0]
 	label ReadyRender Info pos:[520, 50,0] width:270 height:20
 	label RenderingInfo "rendering..." pos:[520, 70,0] width:270 height:20 visible:false
 	label EstimatedInfo "Estimated Info" pos:[520, 90,0] width:270 height:20 visible:false
+	
+	timer clock "testClock" active:false
+	
+	on slightShow pressed do (
+		clock.interval = (slightTick.value*1000)
+		clock.active = true
+	)
+	
+		on clock tick do (
+			SetCurrentView (clock.ticks)
+			if clock.ticks == CamCollection.count do clock.active = false
+	)
 	
 	on addCoronaMod pressed do (
 		coronamod = CoronaCameraMod()
@@ -400,7 +420,7 @@ fn changeGlobal controller controllername type state = (
 						execute("CamerasRo."+controllername+"_"+(i as string)+"."+type+"="+(state as string))
 				) else (
 					execute("CamerasRo."+controllername+"_"+(i as string)+"."+type+"="+(state as string))
-					CameraProps i controller state
+					CameraProps i controller state setview:false
 				)
 			)
 		)
