@@ -216,9 +216,11 @@ rollout GlobalPreferencesRO "Global Preferences" (
 	
 	spinner ResMul "ResolutionX " alig:#left pos:[60,60,0] width:60 range:[1,10,(DefaultResMul as float)] toolTip:"Resolution Multiplication By N Number"
 	button objlayer "LFO" align:#left pos:[160,60,0] toolTip:"Create Layers from selected Objects"
-	button statelayer "SSL" align:#left pos:[200,60,0] toolTip:"Create Scene States from layers"
-	button camlayer "CL" align:#left pos:[240,60,0] toolTip:"Create Free Camera from Layers"
-	button addCoronaMod "ACC" align:#left pos:[280,60,0] toolTip:"Add Corona Camera Modifier"
+	button statelayerSingle "SSLS" align:#left pos:[200,60,0] toolTip:"Create Scene States from layers"
+	button statelayerMulti "SSLM" align:#left pos:[240,60,0] toolTip:"Create Scene States from multiple layers"
+	button camlayer "CL" align:#left pos:[285,60,0] toolTip:"Create Free Camera from Layers"
+	button addCoronaMod "ACC" align:#left pos:[315,60,0] toolTip:"Add Corona Camera Modifier"
+	button openSceneState "OSSM" align:#left pos:[355,60,0] toolTip:"Open Scene State Manager"
 	
 	button prevCam "Prev" align:#left pos:[0,90,0] toolTip:"Prev Camera" width:80 height:30
 	button nextCam "Next" align:#left pos:[80,90,0] toolTip:"Next Camera" width:80 height:30
@@ -231,6 +233,11 @@ rollout GlobalPreferencesRO "Global Preferences" (
 	
 	timer clock "testClock" active:false
 	
+	on openSceneState pressed do (
+		print "ha ha"
+		actionMan.executeAction -1682387772 "4112"
+		)
+	
 	on slightShow pressed do (
 		clock.interval = (slightTick.value*1000)
 		clock.active = true
@@ -239,6 +246,52 @@ rollout GlobalPreferencesRO "Global Preferences" (
 		on clock tick do (
 			SetCurrentView (clock.ticks)
 			if clock.ticks == CamCollection.count do clock.active = false
+	)
+	
+	on statelayerMulti pressed do (
+						
+		rollout multiState "Multiple Scene State"(				
+			multiListBox includeLayers "Per Layer State"
+			multiListBox assignedLayers "Assign to selected layers"
+			button saveMultiState "Save"
+			  
+			on saveMultiState pressed do (
+				
+				for i in includeLayers.selection do (
+					-- hide all layers
+					for j=0 to LayerManager.count-1 do (
+						hidelayer = LayerManager.getLayer j
+						hidelayer.isHidden = if hidelayer.name != "0" then true else false
+						)
+					
+					currentlayer = LayerManager.getLayer i
+					currentlayer.isHidden=false
+						
+					for assigned in assignedLayers.selection do (
+						assignedLayer = LayerManager.getLayer assigned
+						assignedLayer.isHidden =false
+						)
+					
+					ssm.Capture currentlayer.name #{6}
+					
+					)
+			)
+		)
+		
+		local stateLayers = #()
+
+		for i = 0 to layerManager.count-1 do
+		(
+			currentLayer = layerManager.getLayer i
+			if currentLayer.name != "0" do ( append stateLayers currentLayer.name )
+		)
+		
+		rof = newrolloutfloater "multi scene state" 200 600
+		addrollout multiState rof
+		
+		multiState.includeLayers.items = stateLayers
+		multiState.assignedLayers.items = stateLayers
+
 	)
 	
 	on addCoronaMod pressed do (
@@ -374,7 +427,7 @@ rollout GlobalPreferencesRO "Global Preferences" (
 						maxops.cloneNodes #(obj) newNodes:&cam
 						state = sceneStateMgr.FindSceneState layerName
 						setUserProp cam "SceneState" state as string
-						cam.name = layerName+"-"+(camline.text)
+						cam.name = layerName+(camline.text)
 					)
 				)
 				destroyDialog cam_dialog
